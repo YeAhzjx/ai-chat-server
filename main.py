@@ -30,17 +30,22 @@ client=OpenAI(
 
 #聊天接口
 @app.post("/chat")
-def chat(data:dict=Body()):
-    message=data.get("message")
-    #调用大模型
-    response=client.chat.completions.create(
-        model="deepseek-ai/DeepSeek-V3",
-        messages=[{"role":"user","content":message}]
-    )
-    #返回回答
-    reply=response.choices[0].message.content
-    return {"reply":reply}
-
+def chat(history:list=Body(...)):
+    try:
+        #调用大模型
+        response=client.chat.completions.create(
+            model="deepseek-ai/DeepSeek-V3",
+            messages=history,
+            temperature=0.7,
+            top_p=0.9,
+            max_tokens=2000
+        )
+        #返回回答
+        reply=response.choices[0].message.content
+        return {"reply":reply}
+    except Exception as e:
+        print(f"❌ 调用AI失败: {e}")
+        return {"reply": "服务异常，请稍后重试"}
 #运行main.py就运行服务
 if __name__=="__main__":
     import uvicorn
