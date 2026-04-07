@@ -1,5 +1,5 @@
 #导入fastapi框架
-from fastapi import FastAPI
+from fastapi import Body, FastAPI
 #解决跨域引入cors中间件
 from fastapi.middleware.cors import CORSMiddleware
 #导入openai客户端
@@ -30,10 +30,11 @@ client=OpenAI(
 
 #聊天接口
 @app.post("/chat")
-def chat(message:str):
+def chat(data:dict=Body()):
+    message=data.get("message")
     #调用大模型
     response=client.chat.completions.create(
-        model="Qwen/Qwen2-7B-Instruct",
+        model="deepseek-ai/DeepSeek-V3",
         messages=[{"role":"user","content":message}]
     )
     #返回回答
