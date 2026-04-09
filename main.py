@@ -4,17 +4,21 @@ from fastapi import Body, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 #导入openai客户端
 from openai import OpenAI
-
+# 导入os模块读取环境变量
+import os
+from dotenv import load_dotenv
+# 加载.env文件
+load_dotenv()
 #创建fastapi应用
 app=FastAPI()
 
 #配置跨域
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=os.getenv("FRONTEND_ORIGIN"),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["POST","GET"],
+    allow_headers=["Content-Type"],
 )
 
 #测试接口
@@ -24,8 +28,8 @@ def root():
 
 #配置apikey
 client=OpenAI(
-    api_key="sk-gemgkzxqafjlrubkgifzltzwzgmfrwshqtzvrgdpbjxhbquv",
-    base_url="https://api.siliconflow.cn/v1"
+    api_key=os.getenv("OPENAI_API_KEY"),
+    base_url=os.getenv("OPENAI_BASE_URL")
 )
 
 #聊天接口
@@ -38,7 +42,7 @@ def chat(history:list=Body(...)):
             messages=history,
             temperature=0.7,
             top_p=0.9,
-            max_tokens=2000
+            max_tokens=2000,
         )
         #返回回答
         reply=response.choices[0].message.content
