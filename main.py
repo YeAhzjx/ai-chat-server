@@ -12,6 +12,9 @@ import asyncio
 # 导入os模块读取环境变量
 import os
 from dotenv import load_dotenv
+# langchain核心
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage,AIMessage,SystemMessage
 # 加载.env文件
 load_dotenv()
 #创建fastapi应用
@@ -31,11 +34,11 @@ app.add_middleware(
 def root():
     return {"message":"后端服务启动成功！"}
 
-#配置apikey
-client=OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-    base_url=os.getenv("OPENAI_BASE_URL")
-)
+# #配置apikey
+# client=OpenAI(
+#     api_key=os.getenv("OPENAI_API_KEY"),
+#     base_url=os.getenv("OPENAI_BASE_URL")
+# )
 
 #聊天接口
 @app.post("/chat/stream")
@@ -44,24 +47,27 @@ async def chat_stream(history: list = Body(...)):
     # 异步生成器：逐块返回流式数据
     async def generate_stream() -> AsyncGenerator[str, None]:
         try:
-            # 调用大模型的流式接口（stream=True）
-            stream = await asyncio.to_thread(
-                client.chat.completions.create,
+            # 初始化langchain模型
+            llm = ChatOpenAI(
                 model="deepseek-ai/DeepSeek-V3",
-                messages=history,
+                api_key=os.getenv("OPENAI_API_KEY"),
+                base_url=os.getenv("OPENAI_BASE_URL"),
                 temperature=0.7,
                 top_p=0.9,
                 max_tokens=2000,
                 stream=True,  # 开启流式
             )
-            
-            # 逐行读取流式数据
-            for chunk in stream:
-                if chunk.choices[0].delta.content:
-                    content = chunk.choices[0].delta.content
-                    # 严格SSE格式：data: 内容\n\n
-                    yield f"data: {content}\n\n"
-                    # 控制流速度，避免前端处理不过来
+            # 把历史消息转成 LangChain 格式
+            langchain_messages=[]
+            for msg in history:
+                if msg["role"] == "user":
+                    langchain_messages.append(HumanMessage(content=msg["content"]))
+                elif msg["role"] == "assistant":
+                    langchain_messages.append(AIMessage(content=msg["content"]))
+            # LangChain流式输出
+            async for chunk in llm.astream(langchain_messages):
+                if chunk.content:
+                    yield f"data: {chunk.content}\n\n"
                     await asyncio.sleep(0.01)
             
             # 流式结束标记（前端可识别）
